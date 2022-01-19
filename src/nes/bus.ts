@@ -18,7 +18,7 @@ export class Bus {
 
     read(address: number, readOnly = false): number {
         if( address >= 0x0000 && address <= 0xffff) {
-            return this.ram[address]
+            return new Uint8Array(this.ram).at(address)
         }
         return 0x00
     }

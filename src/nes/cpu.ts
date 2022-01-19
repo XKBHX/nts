@@ -1,8 +1,8 @@
-import { lookup } from 'dns';
+import { IMP } from './addressing';
 import { Bus } from './bus';
-import { Instruction } from './opcode';
+import { Instruction, instructions } from './opcode';
 
-export enum FLAGS {
+export enum FLAG {
     C = (1 << 0), //Carry Bit
     Z = (1 << 1), //Zero
     I = (1 << 2), //Disable Interrupts
@@ -43,18 +43,31 @@ export class Cpu {
         this.relativeAddress = 0x00
         this.opcode = 0x00
         this.cycles = 0
-        this.lookup = []
+        this.lookup = instructions
     }
 
     write(address: number, data: number) {
         this.bus.write(address, data)
     }
 
-    read(address: number) {
-        this.bus.read(address, false)
+    read(address: number): number {
+        return this.bus.read(address, false)
     }
 
-    clock() {}
+    clock() {
+        if(this.cycles) {
+            this.opcode = this.read(this.pc)
+            this.pc++
+            this.cycles = this.lookup[this.opcode].cycles
+            
+            const additionalCycles1 = this.lookup[this.opcode].mode(this)
+            const additionalCycles2 = this.lookup[this.opcode].operate(this)
+
+            this.cycles += (additionalCycles1 & additionalCycles2)
+        }
+
+        this.cycles--
+    }
 
     reset() {}
 
@@ -62,5 +75,22 @@ export class Cpu {
 
     nmi() {}
 
-    fetch(): number {}
+    fetch(): number {
+        if(!(this.lookup[this.opcode].mode === IMP)) this.fetched = this.read(this.absoluteAddress)
+
+        return this.fetched
+    }
+
+    setFlag(flag: FLAG, v: boolean) {
+        if(v) {
+            this.status |= flag
+        } else {
+            this.status |= ~flag
+        }
+    }
+
+    /// This NEEDS to be FIXED!!!!
+    getFlag(flag: FLAG) {
+        return this.status
+    }
 }
